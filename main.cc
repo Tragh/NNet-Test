@@ -183,6 +183,16 @@ class NeuralNet{
 
 };
 
+class n{
+		char data[4];
+		private: int netint;
+		public: 
+		n(int i){
+			netint = htonl(i);
+			}
+		//operator int(){return ntohl(netint);}
+};
+
 class DataReader{
 	std::ifstream ImageFile;
 	boost::iostreams::filtering_istream ImageFileS;
@@ -190,10 +200,12 @@ class DataReader{
 	std::ifstream LabelFile;
 	boost::iostreams::filtering_istream LabelFileS;
 	
-	union netint_t {
-		char data[4];
+	union netint_t{  //like an int, but with network (big endian) ordering.
 		private: int netint;
-		public: operator int(){return ntohl(netint);}
+		public: char data[4];
+		netint_t(){}
+		netint_t(const int i){netint = htonl(i);}
+		operator int(){return ntohl(netint);}
 	};
 	
 	struct {
@@ -240,7 +252,7 @@ class DataReader{
 
 	void GetImages(std::vector<arma::Col<double>> &ImageVect)
 	{
-		ImageFileS.reset();
+		ImageFileS.reset();  //reset the stream and seek to beginning of data
 		ImageFile.seekg(0);
 		ImageFileS.push(boost::iostreams::gzip_decompressor());
 		ImageFileS.push(ImageFile);
@@ -260,7 +272,7 @@ class DataReader{
 	
 	void GetLabels(std::vector<int> &Label)
 	{
-		LabelFileS.reset();
+		LabelFileS.reset();  //reset the stream and seek to beginning of data
 		LabelFile.seekg(0);
 		LabelFileS.push(boost::iostreams::gzip_decompressor());
 		LabelFileS.push(LabelFile);
