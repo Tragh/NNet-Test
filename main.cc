@@ -209,10 +209,7 @@ class DataReader{
 		ImageFile.open("data/train-images-idx3-ubyte.gz", std::ios::in | std::ios::binary);
 		ImageFileS.push(boost::iostreams::gzip_decompressor());
 		ImageFileS.push(ImageFile);
-		//std::istream T(&ImageFileS);
-		  
-		//ImageFile.open("data/train-images.idx3-ubyte", std::ios::in | std::ios::binary);
-		//assert(ImageFile);
+		
 		ImageFileS.read (reinterpret_cast<char*>(&HeaderI), sizeof HeaderI);
 		assert(ImageFileS);
 
@@ -225,7 +222,8 @@ class DataReader{
 		LabelFile.open("data/train-labels-idx1-ubyte.gz", std::ios::in | std::ios::binary);	
 		LabelFileS.push(boost::iostreams::gzip_decompressor());
 		LabelFileS.push(LabelFile);	
-		LabelFileS.ignore(8);
+		
+		LabelFileS.ignore(8);  //first 8 bytes are the header file
 		assert(LabelFileS);
 	}
 
@@ -233,7 +231,6 @@ class DataReader{
 	std::vector<char> GetNextImage()
 	{
 		std::vector<char> ret(HeaderI.image_height*HeaderI.image_width);
-		//ImageFileS.seekg(filepointer);
 		ImageFileS.read(ret.data(), HeaderI.image_height*HeaderI.image_width);
 		assert(ImageFileS);
 		return ret;
@@ -242,7 +239,6 @@ class DataReader{
 	int GetNextLabel()
 	{
 		int ret=0;
-		//LabelFileS.seekg(filepointer);
 		LabelFileS.read(reinterpret_cast<char*>(&ret),sizeof(char));
 		assert(LabelFileS);
 		return ret;
@@ -295,10 +291,6 @@ int main()
 	DataReader Images;
 	
 
-	
-	std::vector<arma::Col<double>> in,out;
-	
-	
 	const int TrainingSetSize=1000;
 	
 	std::vector<arma::Col<double>> ImageVect(60000); //lazy hardcoding 60000 here :(
