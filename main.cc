@@ -192,18 +192,18 @@ class DataReader{
 	
 	union netint_t {
 		char data[4];
-		int netint;
-		operator int(){return ntohl(netint);}
+		private: int netint;
+		public: operator int(){return ntohl(netint);}
 	};
 	
-	struct headerI_t{
+	struct {
 		netint_t magic_number;
 		netint_t num_items;
 		netint_t image_height;
 		netint_t image_width;
 	} HeaderI;
 	
-	struct headerL_t{
+	struct {
 		netint_t magic_number;
 		netint_t num_items;
 	} HeaderL;
