@@ -184,7 +184,6 @@ class NeuralNet{
 };
 
 class DataReader{
-	public:
 	std::ifstream ImageFile;
 	boost::iostreams::filtering_istream ImageFileS;
 	
@@ -197,13 +196,19 @@ class DataReader{
 		operator int(){return ntohl(netint);}
 	};
 	
-	struct header_t{
+	struct headerI_t{
 		netint_t magic_number;
 		netint_t num_items;
 		netint_t image_height;
 		netint_t image_width;
 	} HeaderI;
 	
+	struct headerL_t{
+		netint_t magic_number;
+		netint_t num_items;
+	} HeaderL;
+	
+	public:
 	DataReader()
 	{
 		ImageFile.open("data/train-images-idx3-ubyte.gz", std::ios::in | std::ios::binary);
@@ -217,17 +222,57 @@ class DataReader{
 				<< "	Magic Number: " << HeaderI.magic_number << std::endl
 				<< "	Number Images: " << HeaderI.num_items << std::endl
 				<< "	Image Height: " << HeaderI.image_height << std::endl
-				<< "	Image Width: " << HeaderI.image_width << std::endl;
+				<< "	Image Width: " << HeaderI.image_width << std::endl << std::endl;
 				
 		LabelFile.open("data/train-labels-idx1-ubyte.gz", std::ios::in | std::ios::binary);	
 		LabelFileS.push(boost::iostreams::gzip_decompressor());
 		LabelFileS.push(LabelFile);	
 		
-		LabelFileS.ignore(8);  //first 8 bytes are the header file
+		LabelFileS.read (reinterpret_cast<char*>(&HeaderL), sizeof HeaderL);
 		assert(LabelFileS);
+		
+		std::cout << "Loaded Label File, data:" << std::endl
+				<< "	Magic Number: " << HeaderL.magic_number << std::endl
+				<< "	Number Labels: " << HeaderL.num_items << std::endl << std::endl;
+		
+
 	}
 
+	void GetImages(std::vector<arma::Col<double>> &ImageVect)
+	{
+		ImageFileS.reset();
+		ImageFile.seekg(0);
+		ImageFileS.push(boost::iostreams::gzip_decompressor());
+		ImageFileS.push(ImageFile);
+		ImageFileS.ignore(sizeof(HeaderI));
+		
+		ImageVect.resize(HeaderI.num_items);
+		int size=HeaderI.image_width*HeaderI.image_height;
+		for(int i=0;i<HeaderI.num_items;++i){
+			auto image=GetNextImage();
+			ImageVect[i].resize(size);
+			for(int j=0;j<size;++j){
+				ImageVect[i][j]=(static_cast<double>(static_cast<unsigned char>(image[j])))/512;
+			}
+		}
+	}
 	
+	
+	void GetLabels(std::vector<int> &Label)
+	{
+		LabelFileS.reset();
+		LabelFile.seekg(0);
+		LabelFileS.push(boost::iostreams::gzip_decompressor());
+		LabelFileS.push(LabelFile);
+		LabelFileS.ignore(sizeof(HeaderL));
+		
+		Label.clear();
+		for(int i=0;i<HeaderL.num_items;++i){
+			Label.push_back(GetNextLabel());
+		}
+	}
+	
+	private:
 	std::vector<char> GetNextImage()
 	{
 		std::vector<char> ret(HeaderI.image_height*HeaderI.image_width);
@@ -243,6 +288,7 @@ class DataReader{
 		assert(LabelFileS);
 		return ret;
 	}
+	
 	
 /*	void PrintImage(int image_number)
 	{
@@ -293,22 +339,21 @@ int main()
 
 	const int TrainingSetSize=1000;
 	
-	std::vector<arma::Col<double>> ImageVect(60000); //lazy hardcoding 60000 here :(
-	std::vector<arma::Col<double>> LabelVect(60000);
-	std::vector<int> Label(60000);
+	std::vector<arma::Col<double>> ImageVect; 
+	std::vector<arma::Col<double>> LabelVect;
+	std::vector<int> Label;
 	
 	std::cout << std::endl << std::endl;
 	std::cout << "Caching images and labels for training..." << std::endl;
-	for(int i=0;i<60000;++i){
-		auto image=Images.GetNextImage();
-		ImageVect[i].resize(784);
+	Images.GetImages(ImageVect);
+	Images.GetLabels(Label);
+	assert(ImageVect.size() == Label.size());
+	
+	LabelVect.resize(Label.size());  //put the outputs in a nice format for learning
+	for(int i=0;i<Label.size();++i){
 		LabelVect[i].resize(10);
 		LabelVect[i].fill(-1);
-		Label[i]=Images.GetNextLabel();
 		LabelVect[i][Label[i]]=1;
-		for(int j=0;j<784;++j){
-			ImageVect[i][j]=(static_cast<double>(static_cast<unsigned char>(image[j])))/512;
-		}
 	}
 	
 	
