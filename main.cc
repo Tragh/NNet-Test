@@ -4,7 +4,6 @@
 #include <armadillo>
 #include <cassert>
 #include <math.h>
-#include <cstdlib>
 #include <fstream>
 #include <algorithm>
 #include <arpa/inet.h>
@@ -15,7 +14,7 @@
 
 
 
-//Compile with: g++ -march=native -O3 -std=gnu++11 -ffast-math -pipe -larmadillo main.cc -o main
+//Compile with: g++ -march=native -O3 -std=gnu++11 -ffast-math -pipe -larmadillo -lboost_iostreams main.cc -o main
 
 
 template <typename type>
