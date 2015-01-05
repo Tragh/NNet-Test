@@ -134,9 +134,9 @@ class NeuralNet{
 	}
 	
 
-	void LearnEpochM(const std::vector<Vector> &input, const std::vector<Vector> &expected_output,int epoch_size, int batches, type rate, type lambda)
+	void LearnEpochM(const Matrix &input, const Matrix &expected_output,int epoch_size, int batches, type rate, type lambda)
 	{
-		assert(input.size()==expected_output.size());
+		assert(input.n_cols==expected_output.n_cols);
 		assert(batches!=0);
 
 		type adjusted_rate=rate/batches;
@@ -147,16 +147,16 @@ class NeuralNet{
 		int random_index=0;
 		
 		
-		Matrix inputM(input[0].n_elem,batches);
-		Matrix expected_outputM(expected_output[0].n_elem,batches);
+		Matrix inputM(input.n_rows,batches);
+		Matrix expected_outputM(expected_output.n_rows,batches);
 		
 		for(int rep=0;rep<epoch_size;rep+=batches){
 			
 			
 			for(int i=0;i<batches;++i){
 				int num=unique_randoms[random_index++];
-				inputM.col(i)=input[num];
-				expected_outputM.col(i)=expected_output[num];
+				inputM.col(i)=input.col(num);
+				expected_outputM.col(i)=expected_output.col(num);
 			}	
 							
 				
@@ -164,7 +164,6 @@ class NeuralNet{
 		
 			//Now update the weights and biases
 			//Derivative function for weights
-	
 			for(int i=0;i<NumLayers-1;++i){
 				for(int r=0;r<LinMaps[i].n_rows;++r)
 					for(int c=0;c<LinMaps[i].n_cols;++c){
@@ -179,8 +178,6 @@ class NeuralNet{
 			}
 		}
 	}
-	
-
 };
 
 class n{
@@ -223,6 +220,7 @@ class DataReader{
 	public:
 	DataReader()
 	{
+
 		ImageFile.open("data/train-images-idx3-ubyte.gz", std::ios::in | std::ios::binary);
 		ImageFileS.push(boost::iostreams::gzip_decompressor());
 		ImageFileS.push(ImageFile);
@@ -250,7 +248,7 @@ class DataReader{
 
 	}
 
-	void GetImages(std::vector<arma::Col<double>> &ImageVect)
+	void GetImages(arma::Mat<double> &ImageM)
 	{
 		ImageFileS.reset();  //reset the stream and seek to beginning of data
 		ImageFile.seekg(0);
@@ -258,13 +256,12 @@ class DataReader{
 		ImageFileS.push(ImageFile);
 		ImageFileS.ignore(sizeof(HeaderI));
 		
-		ImageVect.resize(HeaderI.num_items);
 		int size=HeaderI.image_width*HeaderI.image_height;
+		ImageM.resize(size,HeaderI.num_items);
 		for(int i=0;i<HeaderI.num_items;++i){
 			auto image=GetNextImage();
-			ImageVect[i].resize(size);
 			for(int j=0;j<size;++j){
-				ImageVect[i][j]=(static_cast<double>(static_cast<unsigned char>(image[j])))/512;
+				ImageM.col(i)[j]=(static_cast<double>(static_cast<unsigned char>(image[j])))/512;
 			}
 		}
 	}
@@ -351,30 +348,31 @@ int main()
 
 	const int TrainingSetSize=1000;
 	
-	std::vector<arma::Col<double>> ImageVect; 
-	std::vector<arma::Col<double>> LabelVect;
+
+	arma::Mat<double> InputM;
+	arma::Mat<double> EOutputM;
 	std::vector<int> Label;
 	
 	std::cout << std::endl << std::endl;
 	std::cout << "Caching images and labels for training..." << std::endl;
-	Images.GetImages(ImageVect);
+	Images.GetImages(InputM);
 	Images.GetLabels(Label);
-	assert(ImageVect.size() == Label.size());
+	assert(InputM.n_cols == Label.size());
 	
-	LabelVect.resize(Label.size());  //put the outputs in a nice format for learning
+	EOutputM.resize(10,Label.size());  //put the outputs in a nice format for learning
 	for(int i=0;i<Label.size();++i){
-		LabelVect[i].resize(10);
-		LabelVect[i].fill(-1);
-		LabelVect[i][Label[i]]=1;
+		EOutputM.col(i).fill(-1);
+		EOutputM(Label[i],i)=1;
 	}
 	
 	
 	std::cout << "Starting learning..." << std::endl;
 
 
+	
 	int epoch_number=0;
 	for(int i=0;i<30;i++){
-		NNet.LearnEpochM(ImageVect, LabelVect, TrainingSetSize, 10, rate, lambda/TrainingSetSize);
+		NNet.LearnEpochM(InputM, EOutputM, TrainingSetSize, 10, rate, lambda/TrainingSetSize);
 		std::cout << " Completed epoch: " << ++epoch_number << std::endl;
 	}
 	
@@ -383,14 +381,14 @@ int main()
 	
 	float accuracy=0;
 	for(int i=0;i<1000;i++){
-		if(Max(NNet.RunThrough(ImageVect[i])) == Label[i])
+		if(Max(NNet.RunThrough(InputM.col(i))) == Label[i])
 			accuracy+=0.1;
 	}
 	std::cout << "Accuracy on known cases: " << accuracy << "%" << std::endl;
 	
 	accuracy=0;
-	for(int i=50000;i<60000;i++){
-		if(Max(NNet.RunThrough(ImageVect[i])) == Label[i])
+	for(int i=50000;i<60000;i++){ //50000-60000 is test data
+		if(Max(NNet.RunThrough(InputM.col(i))) == Label[i])
 			accuracy+=0.01;
 	}
 	std::cout << "Accuracy on unknown cases: " << accuracy << "%" << std::endl;
