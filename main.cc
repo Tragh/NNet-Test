@@ -180,15 +180,6 @@ class NeuralNet{
 	}
 };
 
-class n{
-		char data[4];
-		private: int netint;
-		public: 
-		n(int i){
-			netint = htonl(i);
-			}
-		//operator int(){return ntohl(netint);}
-};
 
 class DataReader{
 	std::ifstream ImageFile;
@@ -197,12 +188,12 @@ class DataReader{
 	std::ifstream LabelFile;
 	boost::iostreams::filtering_istream LabelFileS;
 	
-	union netint_t{  //like an int, but with network (big endian) ordering.
+	struct netint_t{  //like an int, but with network (big endian) ordering.
 		private: int netint;
-		public: char data[4];
-		netint_t(){}
+		public:	netint_t(){}
 		netint_t(const int i){netint = htonl(i);}
 		operator int(){return ntohl(netint);}
+		char* data(){return reinterpret_cast<char*>(&netint);}
 	};
 	
 	struct {
@@ -210,11 +201,13 @@ class DataReader{
 		netint_t num_items;
 		netint_t image_height;
 		netint_t image_width;
+		char* data(){return reinterpret_cast<char*>(this);}
 	} HeaderI;
 	
 	struct {
 		netint_t magic_number;
 		netint_t num_items;
+		char* data(){return reinterpret_cast<char*>(this);}
 	} HeaderL;
 	
 	public:
@@ -225,7 +218,7 @@ class DataReader{
 		ImageFileS.push(boost::iostreams::gzip_decompressor());
 		ImageFileS.push(ImageFile);
 		
-		ImageFileS.read (reinterpret_cast<char*>(&HeaderI), sizeof HeaderI);
+		ImageFileS.read (HeaderI.data(), sizeof HeaderI);
 		assert(ImageFileS);
 
 		std::cout << "Loaded Image File, data:" << std::endl
@@ -238,7 +231,7 @@ class DataReader{
 		LabelFileS.push(boost::iostreams::gzip_decompressor());
 		LabelFileS.push(LabelFile);	
 		
-		LabelFileS.read (reinterpret_cast<char*>(&HeaderL), sizeof HeaderL);
+		LabelFileS.read (HeaderL.data(), sizeof HeaderL);
 		assert(LabelFileS);
 		
 		std::cout << "Loaded Label File, data:" << std::endl
