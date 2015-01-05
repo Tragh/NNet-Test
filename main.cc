@@ -247,7 +247,7 @@ class DataReader{
 		ImageFile.seekg(0);
 		ImageFileS.push(boost::iostreams::gzip_decompressor());
 		ImageFileS.push(ImageFile);
-		ImageFileS.ignore(sizeof(HeaderI));
+		ImageFileS.ignore(sizeof HeaderI);
 		
 		int size=HeaderI.image_width*HeaderI.image_height;
 		ImageM.resize(size,HeaderI.num_items);
@@ -266,7 +266,7 @@ class DataReader{
 		LabelFile.seekg(0);
 		LabelFileS.push(boost::iostreams::gzip_decompressor());
 		LabelFileS.push(LabelFile);
-		LabelFileS.ignore(sizeof(HeaderL));
+		LabelFileS.ignore(sizeof HeaderL );
 		
 		Label.clear();
 		for(int i=0;i<HeaderL.num_items;++i){
@@ -325,28 +325,21 @@ int Max(arma::Col<double> c)
 	return ret;
 }
 
+
 int main()
-{
+{	
+	NeuralNet<double> NNet({784,30,10}); //784 input layer, 30 hidden, 10 output layer
+	DataReader Images; //loads images from files
 	
-	
-	NeuralNet<double> NNet({784,30,10});
-	
-
-	
-	float rate=0.03; //learning rate
-	float lambda=2; //normalization rate
-	
-	DataReader Images;
-	
-
+	const float rate=0.03; //learning rate
+	const float lambda=2; //normalization rate
 	const int TrainingSetSize=1000;
 	
-
 	arma::Mat<double> InputM;
 	arma::Mat<double> EOutputM;
 	std::vector<int> Label;
 	
-	std::cout << std::endl << std::endl;
+
 	std::cout << "Caching images and labels for training..." << std::endl;
 	Images.GetImages(InputM);
 	Images.GetLabels(Label);
@@ -360,17 +353,14 @@ int main()
 	
 	
 	std::cout << "Starting learning..." << std::endl;
-
-
-	
 	int epoch_number=0;
-	for(int i=0;i<30;i++){
+	for(int i=0;i<300;i++){
 		NNet.LearnEpochM(InputM, EOutputM, TrainingSetSize, 10, rate, lambda/TrainingSetSize);
 		std::cout << " Completed epoch: " << ++epoch_number << std::endl;
 	}
 	
-	std::cout << "Testing learning..." << std::endl;
 
+	std::cout << "Testing learning..." << std::endl;
 	
 	float accuracy=0;
 	for(int i=0;i<1000;i++){
@@ -386,7 +376,6 @@ int main()
 	}
 	std::cout << "Accuracy on unknown cases: " << accuracy << "%" << std::endl;
 	
-
-
+	return 0;
 }
 
